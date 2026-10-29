@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gite di Natale da Torino (5-8 Dicembre)</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; height: 100vh; background: #f5f5f7; }
+        #sidebar { width: 380px; height: 100vh; overflow-y: auto; background: white; box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 1000; display: flex; flex-direction: column; }
+        .header { padding: 20px; background: #1c1c1e; color: white; }
+        .header h2 { margin: 0 0 5px 0; font-size: 1.2rem; }
+        .header p { margin: 0; font-size: 0.85rem; color: #aeaeb2; }
+        .destination-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .card { background: #fff; border: 1px solid #e5e5ea; border-radius: 10px; padding: 12px 15px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease; }
+        .card:hover { border-color: #0071e3; box-shadow: 0 4px 12px rgba(0,113,227,0.1); }
+        .card h3 { margin: 0 0 5px 0; font-size: 1rem; color: #1d1d1f; display: flex; justify-content: space-between; align-items: center; }
+        .card .duration { font-size: 0.75rem; background: #e8f2ff; color: #0071e3; padding: 2px 6px; border-radius: 4px; font-weight: normal; }
+        .card p { margin: 0 0 8px 0; font-size: 0.85rem; color: #6e6e73; line-height: 1.3; }
+        .costs { font-size: 0.8rem; background: #f2f2f7; padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; color: #3a3a3c; display: flex; justify-content: space-between; }
+        .links { display: flex; gap: 10px; font-size: 0.8rem; }
+        .links a { color: #0071e3; text-decoration: none; font-weight: 500; }
+        .links a:hover { text-decoration: underline; }
+        #map { flex: 1; height: 100vh; }
+        @media (max-width: 768px) {
+            body { flex-direction: column-reverse; }
+            #sidebar { width: 100%; height: 50vh; }
+            #map { height: 50vh; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="header">
+            <h2>🎄 Gite di Natale (5-8 Dicembre)</h2>
+            <p>Partenza da Torino • Raggio max 3 ore</p>
+        </div>
+        <div class="destination-list" id="card-container"></div>
+    </div>
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const destinations = [
+            { name: "Aosta", lat: 45.7374, lng: 7.3201, duration: "2-3 giorni", desc: "Teatro romano e Marché Vert Noël.", transport: "25-30 €", hotel: "90-150 €", mapUrl: "https://www.google.com/maps/search/?api=1&query=Teatro+Romano+Aosta", eventUrl: "https://www.lovevda.it/" },
+            { name: "Asti & Govone", lat: 44.8990, lng: 8.2063, duration: "1-2 giorni", desc: "Mercatini storici e Castello di Babbo Natale.", transport: "15-20 €", hotel: "80-130 €", mapUrl: "https://www.google.com/maps/search/?api=1&query=Piazza+Campo+del+Palio+Asti", eventUrl: "https://www.magicopaesedinatale.com/" },
+            { name: "Milano", lat: 45.4642, lng: 9.1900, duration: "2-3 giorni", desc: "Oh bej! Oh bej! e musei di livello mondiale.", transport: "45-55 €", hotel: "110-200 €", mapUrl: "https://www.google.com/maps/search/?api=1&query=Castello+Sforzesco+Milano", eventUrl: "https://www.yesmilano.it/" },
+            { name: "Santa Maria Maggiore", lat: 46.1398, lng: 8.4619, duration: "1-2 giorni", desc: "Baite in pietra e celebre mercatino artigianale.", transport: "30-35 €", hotel: "85-140 €", mapUrl: "https://www.google.com/maps/search/?api=1&query=Piazza+Risorgimento+Santa+Maria+Maggiore", eventUrl: "https://www.misenatale.it/" },
+            { name: "Cuneo", lat: 44.3845, lng: 7.5427, duration: "1-2 giorni", desc: "IllumiNatale, portici storici e atmosfera alpina.", transport: "15-20 €", hotel: "75-120 €", mapUrl: "https://www.google.com/maps/search/?api=1&query=Piazza+Galimberti+Cuneo", eventUrl: "https://www.illuminatale.it/" },
+            { name: "Biella & Ricetto di Candelo", lat: 45.5519, lng: 8.0640, duration: "1-2 giorni", desc: "Borgo medievale fortificato e prodotti tipici.", transport: "20-25 €", hotel: "70-110 €", mapUrl: "https://www.google.com/maps/search/?api=1&query=Ricetto+di+Candelo", eventUrl: "https://www.ricettodicandelo.it/" },
+            { name: "Annecy (Francia)", lat: 45.8992, lng: 6.1294, duration: "2-3 giorni", desc: "La Venezia delle Alpi, canali e Noël des Alpes.", transport: "80-95 € (incl. Frejus)", hotel: "120-210 €", mapUrl: "https://www.google.com/maps/search/?api=1&query=Grand+Rue+Annecy", eventUrl: "https://www.annecy.fr/" },
+            { name: "Montreux (Svizzera)", lat: 46.4312, lng: 6.9107, duration: "3 giorni", desc: "Chalet sul lago di Ginevra e castello medievale.", transport: "85-100 € (incl. Frejus)", hotel: "140-240 €", mapUrl: "https://www.google.com/maps/search/?api=1&query=Grand+Rue+Montreux", eventUrl: "https://www.montreuxnoel.com/" },
+            { name: "Bergamo Alta", lat: 45.7031, lng: 9.6601, duration: "2 giorni", desc: "Mura UNESCO, Piazza Vecchia e funicolari.", transport: "45-55 €", hotel: "90-150 €", mapUrl: "https://www.google.com/maps/search/?api=1&query=Piazza+Vecchia+Bergamo", eventUrl: "https://www.visitbergamo.net/" },
+            { name: "Casale Monferrato", lat: 45.1383, lng: 8.4526, duration: "1-2 giorni", desc: "Castello, cattedrale e infernot sotterranei.", transport: "15-20 €", hotel: "70-110 €", mapUrl: "https://www.google.com/maps/search/?api=1&query=Castello+del+Monferrato+Casale", eventUrl: "https://www.comune.casale-monferrato.al.it/" }
+        ];
+
+        // Inizializzazione Mappa centrata su Torino
+        const map = L.map('map').setView([45.0703, 7.6869], 8);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        const markers = [];
+        const container = document.getElementById('card-container');
+
+        destinations.forEach((dest, index) => {
+            // Aggiungi Marker
+            const marker = L.marker([dest.lat, dest.lng]).addTo(map);
+            marker.bindPopup(`<b>${dest.name}</b><br>🚗 Tr.: ${dest.transport}<br>🏨 Hotel: ${dest.hotel}/notte`);
+            markers.push(marker);
+
+            // Crea Card nella Sidebar
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <h3>${dest.name} <span class="duration">${dest.duration}</span></h3>
+                <p>${dest.desc}</p>
+                <div class="costs">
+                    <span>🚗 <b>Tr. A/R:</b> ${dest.transport}</span>
+                    <span>🏨 <b>Hotel/notte:</b> ${dest.hotel}</span>
+                </div>
+                <div class="links">
+                    <a href="${dest.mapUrl}" target="_blank">📍 Apri Mappa</a>
+                    <a href="${dest.eventUrl}" target="_blank">🌐 Sito Evento</a>
+                </div>
+            `;
+
+            card.addEventListener('click', (e) => {
+                if(e.target.tagName === 'A') return; // Evita conflitto se clicca sui link
+                map.flyTo([dest.lat, dest.lng], 11, { duration: 1.2 });
+                marker.openPopup();
+            });
+
+            container.appendChild(card);
+        });
+    </script>
+</body>
+</html>
